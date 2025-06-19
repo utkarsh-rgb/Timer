@@ -231,7 +231,7 @@
         Ring <span id="currentRing">1</span> of <span id="totalRings">10</span>
       </p>
       <p class="text-secondary-themed mb-4 text-xs sm:text-sm">
-        Sound will stop automatically in <span id="countdown">30</span> seconds
+        Sound will stop automatically in <span id="countdown">5</span> seconds
       </p>
       <div class="space-y-2 sm:space-y-3">
         <button onclick="stopSoundAndResume()" 
@@ -467,19 +467,21 @@
       }
     }
 
-    function playSoundFor30Sec() {
-      clearInterval(countdownTimer);
-      
-      showModal();
-      
-      // Play alarm sound
-      playAlarmSound();
+function playSoundFor5Sec() {
+  isRinging = true;
 
-      // Auto-stop after 30 seconds
-      ringDurationTimer = setTimeout(() => {
-        stopSoundAndResume();
-      }, 30000);
-    }
+  // Optional: show a small visual cue that it's ringing
+  playAlarmSound();
+
+  // Just play the sound for 5 sec, do NOT stop timer
+  ringDurationTimer = setTimeout(() => {
+    stopSound();
+    isRinging = false;
+
+    // No need to call scheduleNextRing here
+    // It’s already handled in setTimeout outside
+  }, 5000); // 5 seconds only
+}
 
     function stopSoundAndResume() {
       clearTimeout(ringDurationTimer);
@@ -522,7 +524,7 @@
 
       ringTimer = setTimeout(() => {
         document.getElementById('status').textContent = `🔔 Ring ${repeatCount}/${totalRepeats}`;
-        playSoundFor30Sec();
+        playSoundFor5Sec();
       }, snoozeMs);
     }
 
@@ -576,7 +578,7 @@
       ringTimer = setTimeout(() => {
         repeatCount++;
         document.getElementById('status').textContent = `🔔 Ring ${repeatCount}/${totalRepeats}`;
-        playSoundFor30Sec();
+        playSoundFor5Sec();
       }, pausedTimeRemaining);
     }
 
@@ -628,11 +630,19 @@
         }
       }, 10); // Update every 10ms for smooth millisecond display
 
-      ringTimer = setTimeout(() => {
-        repeatCount++;
-        document.getElementById('status').textContent = `🔔 Ring ${repeatCount}/${totalRepeats}`;
-        playSoundFor30Sec();
-      }, intervalMs);
+    ringTimer = setTimeout(() => {
+  repeatCount++;
+  document.getElementById('status').textContent = `🔔 Ring ${repeatCount}/${totalRepeats}`;
+  playSoundFor5Sec(); // ✅ Now plays without stopping timer
+
+  // Schedule next ring here directly, no pause!
+  if (repeatCount < totalRepeats) {
+    scheduleNextRing(intervalMinutes); // 🔁 Schedule again
+  } else {
+    document.getElementById('status').textContent = "✅ All repetitions complete!";
+  }
+}, intervalMs);
+
     }
 
     function stopRepeater() {
@@ -672,6 +682,15 @@
         this.select();
       });
     });
+
+
+ 
+function stopSound() {
+  alarmSound.pause();
+  alarmSound.currentTime = 0;
+  hideModal(); // if you're using modal
+}
+
   </script>
 </body>
 </html>
