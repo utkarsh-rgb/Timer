@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeAlert Pro - Smart Sound Repeater</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-primary: #f0f4ff;
+      --bg-secondary: #ffffff;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --border-color: #e5e7eb;
+      --accent-color: #3b82f6;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --border-color: #334155;
+      --accent-color: #60a5fa;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .bg-themed {
+      background-color: var(--bg-secondary);
+    }
+
+    .text-themed {
+      color: var(--text-primary);
+    }
+
+    .text-secondary-themed {
+      color: var(--text-secondary);
+    }
+
+    .border-themed {
+      border-color: var(--border-color);
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
+    }
+    
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
+    }
+    
+    @keyframes digit-flip {
+      0% { transform: rotateX(0deg); }
+      50% { transform: rotateX(90deg); }
+      100% { transform: rotateX(0deg); }
+    }
+    
+    .button-press:active {
+      transform: scale(0.98);
+    }
+    
+    .modal-enter {
+      animation: bounce 0.5s ease-out;
+    }
+    
+    .notification-flash {
+      animation: pulse 0.5s ease-in-out 3;
+    }
+    
+    .timer-glow {
+      animation: glow 2s ease-in-out infinite;
+    }
+    
+    .digit-change {
+      animation: digit-flip 0.3s ease-in-out;
+    }
+    
+    .progress-bar {
+      transition: width 0.1s linear;
+    }
+    
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: 50px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .theme-icon {
+      font-size: 18px;
+      transition: transform 0.3s ease;
+    }
+
+    .theme-toggle:hover .theme-icon {
+      transform: rotate(15deg);
+    }
+
+    [data-theme="dark"] .light-icon {
+      display: none;
+    }
+
+    [data-theme="light"] .dark-icon,
+    :root:not([data-theme]) .dark-icon {
+      display: none;
+    }
+
+    .timer-display-dark {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      border-color: #475569;
+    }
+
+    .timer-display-light {
+      background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+      border-color: #d1d5db;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center px-2 sm:px-4 transition-all duration-300">
+  <!-- Theme Toggle Button -->
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+    <span class="theme-icon light-icon">🌙</span>
+    <span class="theme-icon dark-icon">☀️</span>
+    <span class="text-xs font-medium text-themed">Theme</span>
+  </button>
+
+  <div class="bg-themed rounded-2xl shadow-2xl p-4 sm:p-8 max-w-sm sm:max-w-md w-full mx-2 border border-themed transition-all duration-300">
+    <h1 class="text-2xl sm:text-4xl font-bold text-themed mb-4 sm:mb-8 text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      ⚡ TimeAlert Pro
+    </h1>
+    <p class="text-xs sm:text-sm text-secondary-themed text-center mb-6 sm:mb-8">Smart Sound Repeater for Productivity</p>
+
+    <!-- Digital Timer Display -->
+    <div class="flex justify-center mb-6 sm:mb-8">
+      <div class="relative cursor-pointer group" onclick="togglePause()">
+        <!-- Main Timer Display -->
+        <div id="timerDisplay" class="rounded-2xl p-6 sm:p-8 text-center border-4 transition-all duration-300">
+          <!-- Time Display -->
+          <div class="mb-4">
+            <div id="digitalTime" class="text-4xl sm:text-6xl font-mono font-bold text-green-400 mb-2 transition-all duration-200">00:00.000</div>
+            <div class="text-xs sm:text-sm font-medium" style="color: #9ca3af;">MIN:SEC.MS</div>
+          </div>
+          
+          <!-- Progress Bar -->
+          <div class="w-full rounded-full h-2 sm:h-3 mb-3" style="background-color: rgba(107, 114, 128, 0.3);">
+            <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full progress-bar" style="width: 0%"></div>
+          </div>
+          
+          <!-- Status Indicator -->
+          <div class="flex items-center justify-center space-x-2">
+            <div id="statusDot" class="w-3 h-3 rounded-full bg-gray-500 transition-all duration-300"></div>
+            <span id="timerStatus" class="text-xs sm:text-sm font-medium" style="color: #9ca3af;">READY</span>
+          </div>
+        </div>
+        
+        <!-- Interactive hover hint -->
+        <div class="absolute -bottom-6 sm:-bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-secondary-themed opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          Click to pause/resume
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="space-y-4 sm:space-y-6">
+      <div class="grid grid-cols-2 gap-3 sm:gap-4">
+        <div>
+          <label class="block mb-1 sm:mb-2 text-xs sm:text-sm font-semibold text-themed">Interval (minutes):</label>
+          <input type="number" id="interval" min="1" max="60" value="7"
+                 class="w-full px-3 py-2 sm:px-4 sm:py-3 border-2 border-themed bg-themed text-themed rounded-lg text-center font-medium focus:border-blue-500 focus:outline-none transition-colors text-sm sm:text-base hover:border-opacity-60">
+        </div>
+        <div>
+          <label class="block mb-1 sm:mb-2 text-xs sm:text-sm font-semibold text-themed">Repetitions:</label>
+          <input type="number" id="repetitions"  min="1" max="100" value="10"
+                 class="w-full px-3 py-2 sm:px-4 sm:py-3 border-2 border-themed bg-themed text-themed rounded-lg text-center font-medium focus:border-blue-500 focus:outline-none transition-colors text-sm sm:text-base hover:border-opacity-60">
+        </div>
+      </div>
+
+      <div class="flex space-x-2 sm:space-x-3">
+        <button id="startBtn" onclick="startRepeater()" 
+                class="flex-1 px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 text-sm sm:text-base button-press">
+          ▶️ Start
+        </button>
+        <button id="pauseBtn" onclick="pauseRepeater()" style="display: none;"
+                class="flex-1 px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 text-sm sm:text-base button-press">
+          ⏸️ Pause
+        </button>
+        <button onclick="stopRepeater()" 
+                class="flex-1 px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 text-sm sm:text-base button-press">
+          ⏹️ Stop
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-4 sm:mt-6 text-center">
+      <p class="status text-sm sm:text-lg font-medium text-themed" id="status">Ready to start</p>
+    </div>
+  </div>
+
+  <!-- Popup Modal -->
+  <div id="ringModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-themed p-6 sm:p-8 rounded-2xl shadow-2xl text-center max-w-sm mx-4 w-full modal-enter border border-themed">
+      <div class="text-4xl sm:text-6xl mb-3 sm:mb-4 animate-bounce">🔔</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-red-600 mb-3 sm:mb-4">Time's Up!</h2>
+      <p class="text-secondary-themed mb-4 sm:mb-6 text-sm sm:text-base">
+        Ring <span id="currentRing">1</span> of <span id="totalRings">10</span>
+      </p>
+      <p class="text-secondary-themed mb-4 text-xs sm:text-sm">
+        Sound will stop automatically in <span id="countdown">30</span> seconds
+      </p>
+      <div class="space-y-2 sm:space-y-3">
+        <button onclick="stopSoundAndResume()" 
+                class="w-full px-6 py-2 sm:px-8 sm:py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm sm:text-base">
+          🔇 Stop Sound & Continue
+        </button>
+        <button onclick="snooze5Minutes()" 
+                class="w-full px-6 py-2 sm:px-8 sm:py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm sm:text-base">
+          😴 Snooze 5 Minutes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio element for sound.mp3 -->
+  <audio id="alarmSound" preload="auto" loop>
+    <source src="sound.mp3" type="audio/mpeg">
+    <!-- Fallback for browsers that don't support mp3 or if file is missing -->
+  </audio>
+
+  <script>
+    let repeatCount = 0;
+    let totalRepeats = 0;
+    let countdownTimer = null;
+    let ringTimer = null;
+    let targetTime = null;
+    let ringDurationTimer = null;
+    let modalCountdownTimer = null;
+    let intervalMinutes = 0;
+    let totalIntervalMs = 0;
+    let isPaused = false;
+    let pausedTimeRemaining = 0;
+    let isRinging = false;
+    let modalCountdownSeconds = 30;
+    let lastDisplayedTime = '';
+    let currentTheme = 'light';
+
+    // Theme Management
+    function toggleTheme() {
+      currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      updateTimerDisplayTheme();
+      
+      // Save theme preference
+      try {
+        localStorage.setItem('theme-preference', currentTheme);
+      } catch (e) {
+        // Fallback if localStorage is not available
+        console.log('Theme preference not saved');
+      }
+    }
+
+    function initTheme() {
+      try {
+        const savedTheme = localStorage.getItem('theme-preference');
+        if (savedTheme) {
+          currentTheme = savedTheme;
+        } else {
+          // Check system preference
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            currentTheme = 'dark';
+          }
+        }
+      } catch (e) {
+        // Fallback if localStorage is not available
+        currentTheme = 'light';
+      }
+      
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      updateTimerDisplayTheme();
+    }
+
+    function updateTimerDisplayTheme() {
+      const timerDisplay = document.getElementById('timerDisplay');
+      if (currentTheme === 'dark') {
+        timerDisplay.className = timerDisplay.className.replace('timer-display-light', 'timer-display-dark');
+        if (!timerDisplay.className.includes('timer-display-dark')) {
+          timerDisplay.classList.add('timer-display-dark');
+        }
+      } else {
+        timerDisplay.className = timerDisplay.className.replace('timer-display-dark', 'timer-display-light');
+        if (!timerDisplay.className.includes('timer-display-light')) {
+          timerDisplay.classList.add('timer-display-light');
+        }
+      }
+    }
+    const alarmSound = document.getElementById('alarmSound');
+
+    function updateDigitalTimer(remaining, total) {
+      const digitalTime = document.getElementById('digitalTime');
+      const progressBar = document.getElementById('progressBar');
+      const statusDot = document.getElementById('statusDot');
+      const timerStatus = document.getElementById('timerStatus');
+      const timerDisplay = document.getElementById('timerDisplay');
+      
+      // Calculate progress (0 to 100)
+      const progress = Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
+      progressBar.style.width = progress + '%';
+      
+      // Calculate time display with milliseconds
+      const totalMs = Math.max(0, remaining);
+      const minutes = Math.floor(totalMs / 60000);
+      const seconds = Math.floor((totalMs % 60000) / 1000);
+      const milliseconds = Math.floor((totalMs % 1000));
+      
+      const newTimeText = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+      
+      // Add flip animation when time changes
+      if (digitalTime.textContent !== newTimeText && lastDisplayedTime !== newTimeText) {
+        digitalTime.classList.add('digit-change');
+        setTimeout(() => {
+          digitalTime.classList.remove('digit-change');
+        }, 300);
+        digitalTime.textContent = newTimeText;
+        lastDisplayedTime = newTimeText;
+      }
+      
+      // Dynamic styling based on remaining time
+      if (remaining < 10000 && remaining > 0) {
+        digitalTime.style.color = '#ef4444'; // Red
+        timerDisplay.classList.add('timer-glow');
+        statusDot.style.backgroundColor = '#ef4444';
+        timerStatus.textContent = 'ALERT';
+        digitalTime.classList.add('notification-flash');
+      } else if (remaining < 60000 && remaining > 0) {
+        digitalTime.style.color = '#f59e0b'; // Orange
+        timerDisplay.classList.remove('timer-glow');
+        statusDot.style.backgroundColor = '#f59e0b';
+        timerStatus.textContent = 'WARNING';
+        digitalTime.classList.remove('notification-flash');
+      } else if (countdownTimer && !isPaused) {
+        digitalTime.style.color = '#10b981'; // Green
+        timerDisplay.classList.remove('timer-glow');
+        statusDot.style.backgroundColor = '#10b981';
+        timerStatus.textContent = 'RUNNING';
+        digitalTime.classList.remove('notification-flash');
+      } else if (isPaused) {
+        digitalTime.style.color = '#f59e0b'; // Orange
+        timerDisplay.classList.remove('timer-glow');
+        statusDot.style.backgroundColor = '#f59e0b';
+        timerStatus.textContent = 'PAUSED';
+        digitalTime.classList.remove('notification-flash');
+      } else {
+        digitalTime.style.color = '#6b7280'; // Gray
+        timerDisplay.classList.remove('timer-glow');
+        statusDot.style.backgroundColor = '#6b7280';
+        timerStatus.textContent = 'READY';
+        digitalTime.classList.remove('notification-flash');
+      }
+      
+      // Progress bar color based on progress
+      if (progress > 80) {
+        progressBar.className = 'bg-gradient-to-r from-red-500 to-red-600 h-full rounded-full progress-bar';
+      } else if (progress > 50) {
+        progressBar.className = 'bg-gradient-to-r from-orange-500 to-yellow-500 h-full rounded-full progress-bar';
+      } else {
+        progressBar.className = 'bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full progress-bar';
+      }
+    }
+
+    function showModal() {
+      isRinging = true;
+      modalCountdownSeconds = 30;
+      document.getElementById('currentRing').textContent = repeatCount;
+      document.getElementById('totalRings').textContent = totalRepeats;
+      document.getElementById('countdown').textContent = modalCountdownSeconds;
+      document.getElementById("ringModal").classList.remove("hidden");
+      
+      // Start modal countdown
+      modalCountdownTimer = setInterval(() => {
+        modalCountdownSeconds--;
+        document.getElementById('countdown').textContent = modalCountdownSeconds;
+        if (modalCountdownSeconds <= 0) {
+          clearInterval(modalCountdownTimer);
+        }
+      }, 1000);
+    }
+
+    function hideModal() {
+      isRinging = false;
+      clearInterval(modalCountdownTimer);
+      document.getElementById("ringModal").classList.add("hidden");
+    }
+
+    function playAlarmSound() {
+      if (!isRinging) return;
+      
+      try {
+        // Try to play the mp3 file first
+        alarmSound.currentTime = 0;
+        const playPromise = alarmSound.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // If mp3 fails, fall back to generated beep
+            createBeep();
+          });
+        }
+      } catch (e) {
+        // Fallback to generated beep
+        createBeep();
+      }
+    }
+
+    function createBeep() {
+      if (!isRinging) return;
+      
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator1 = audioContext.createOscillator();
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator1.connect(gainNode);
+        oscillator2.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Two-tone beep for better attention
+        oscillator1.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator2.frequency.setValueAtTime(1000, audioContext.currentTime);
+        oscillator1.type = 'sine';
+        oscillator2.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        oscillator1.start(audioContext.currentTime);
+        oscillator2.start(audioContext.currentTime + 0.1);
+        oscillator1.stop(audioContext.currentTime + 0.5);
+        oscillator2.stop(audioContext.currentTime + 0.5);
+      } catch (e) {
+        console.error("Audio creation failed:", e);
+      }
+    }
+
+    function playSoundFor30Sec() {
+      clearInterval(countdownTimer);
+      
+      showModal();
+      
+      // Play alarm sound
+      playAlarmSound();
+
+      // Auto-stop after 30 seconds
+      ringDurationTimer = setTimeout(() => {
+        stopSoundAndResume();
+      }, 30000);
+    }
+
+    function stopSoundAndResume() {
+      clearTimeout(ringDurationTimer);
+      clearInterval(modalCountdownTimer);
+      
+      // Stop alarm sound
+      alarmSound.pause();
+      alarmSound.currentTime = 0;
+      
+      hideModal();
+      
+      // Continue with the schedule
+      scheduleNextRing(intervalMinutes);
+    }
+
+    function snooze5Minutes() {
+      clearTimeout(ringDurationTimer);
+      clearInterval(modalCountdownTimer);
+      
+      // Stop alarm sound
+      alarmSound.pause();
+      alarmSound.currentTime = 0;
+      
+      hideModal();
+      
+      // Schedule next ring in 5 minutes
+      const snoozeMs = 5 * 60 * 1000;
+      targetTime = Date.now() + snoozeMs;
+      
+      document.getElementById('status').textContent = `😴 Snoozed for 5 minutes (Ring ${repeatCount}/${totalRepeats})`;
+      
+      countdownTimer = setInterval(() => {
+        const remaining = Math.max(0, targetTime - Date.now());
+        updateDigitalTimer(remaining, snoozeMs);
+        
+        if (remaining <= 0) {
+          clearInterval(countdownTimer);
+        }
+      }, 10); // Update every 10ms for smooth millisecond display
+
+      ringTimer = setTimeout(() => {
+        document.getElementById('status').textContent = `🔔 Ring ${repeatCount}/${totalRepeats}`;
+        playSoundFor30Sec();
+      }, snoozeMs);
+    }
+
+    function togglePause() {
+      if (!countdownTimer || isRinging) return;
+      
+      if (isPaused) {
+        resumeRepeater();
+      } else {
+        pauseRepeater();
+      }
+    }
+
+    function pauseRepeater() {
+      if (!countdownTimer || isPaused || isRinging) return;
+      
+      isPaused = true;
+      pausedTimeRemaining = Math.max(0, targetTime - Date.now());
+      
+      clearInterval(countdownTimer);
+      clearTimeout(ringTimer);
+      
+      document.getElementById('status').textContent = `⏸️ Paused (${Math.ceil(pausedTimeRemaining / 60000)} min remaining)`;
+      document.getElementById('startBtn').style.display = 'inline-block';
+      document.getElementById('startBtn').innerHTML = '▶️ Resume';
+      document.getElementById('pauseBtn').style.display = 'none';
+      
+      updateDigitalTimer(pausedTimeRemaining, totalIntervalMs);
+    }
+
+    function resumeRepeater() {
+      if (!isPaused) return;
+      
+      isPaused = false;
+      targetTime = Date.now() + pausedTimeRemaining;
+      
+      document.getElementById('status').textContent = `⏳ Resumed - Ring ${repeatCount + 1}/${totalRepeats}`;
+      document.getElementById('startBtn').innerHTML = '▶️ Start';
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('pauseBtn').style.display = 'inline-block';
+      
+      countdownTimer = setInterval(() => {
+        const remaining = Math.max(0, targetTime - Date.now());
+        updateDigitalTimer(remaining, totalIntervalMs);
+        
+        if (remaining <= 0) {
+          clearInterval(countdownTimer);
+        }
+      }, 10); // Update every 10ms for smooth millisecond display
+
+      ringTimer = setTimeout(() => {
+        repeatCount++;
+        document.getElementById('status').textContent = `🔔 Ring ${repeatCount}/${totalRepeats}`;
+        playSoundFor30Sec();
+      }, pausedTimeRemaining);
+    }
+
+    function startRepeater() {
+      if (isPaused) {
+        resumeRepeater();
+        return;
+      }
+      
+      intervalMinutes = parseInt(document.getElementById('interval').value);
+      const repetitions = parseInt(document.getElementById('repetitions').value);
+      
+      if (isNaN(intervalMinutes) || isNaN(repetitions) || intervalMinutes <= 0 || repetitions <= 0) {
+        alert("Please enter valid numbers for interval and repetitions.");
+        return;
+      }
+      
+      totalRepeats = repetitions;
+      repeatCount = 0;
+      totalIntervalMs = intervalMinutes * 60 * 1000;
+      isPaused = false;
+      
+      document.getElementById('status').textContent = `⏳ Repeating every ${intervalMinutes} minute(s), ${repetitions} times total`;
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('pauseBtn').style.display = 'inline-block';
+      
+      scheduleNextRing(intervalMinutes);
+    }
+
+    function scheduleNextRing(intervalMin) {
+      if (repeatCount >= totalRepeats) {
+        document.getElementById('status').textContent = "✅ All repetitions complete!";
+        clearInterval(countdownTimer);
+        document.getElementById('startBtn').style.display = 'inline-block';
+        document.getElementById('pauseBtn').style.display = 'none';
+        updateDigitalTimer(0, totalIntervalMs);
+        return;
+      }
+
+      const intervalMs = intervalMin * 60 * 1000;
+      targetTime = Date.now() + intervalMs;
+
+      countdownTimer = setInterval(() => {
+        const remaining = Math.max(0, targetTime - Date.now());
+        updateDigitalTimer(remaining, intervalMs);
+        
+        if (remaining <= 0) {
+          clearInterval(countdownTimer);
+        }
+      }, 10); // Update every 10ms for smooth millisecond display
+
+      ringTimer = setTimeout(() => {
+        repeatCount++;
+        document.getElementById('status').textContent = `🔔 Ring ${repeatCount}/${totalRepeats}`;
+        playSoundFor30Sec();
+      }, intervalMs);
+    }
+
+    function stopRepeater() {
+      clearTimeout(ringTimer);
+      clearInterval(countdownTimer);
+      clearTimeout(ringDurationTimer);
+      clearInterval(modalCountdownTimer);
+      
+      // Stop alarm sound
+      alarmSound.pause();
+      alarmSound.currentTime = 0;
+      
+      hideModal();
+      
+      isPaused = false;
+      pausedTimeRemaining = 0;
+      repeatCount = 0;
+      
+      document.getElementById('status').textContent = "⛔ Stopped";
+      document.getElementById('startBtn').style.display = 'inline-block';
+      document.getElementById('startBtn').innerHTML = '▶️ Start';
+      document.getElementById('pauseBtn').style.display = 'none';
+      
+      updateDigitalTimer(0, totalIntervalMs || 300000);
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      updateDigitalTimer(0, 300000); // 5 minutes default
+      
+      // Add click handlers for better mobile experience
+      document.getElementById('interval').addEventListener('focus', function() {
+        this.select();
+      });
+      
+      document.getElementById('repetitions').addEventListener('focus', function() {
+        this.select();
+      });
+    });
+  </script>
+</body>
+</html>
